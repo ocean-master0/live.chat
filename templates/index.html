@@ -127,6 +127,8 @@
             <button id="sendBtn">Send Message</button>
         </div>
         <div class="controls">
+            <button id="startVoiceBtn" style="background-color: #28a745;">Start Voice Chat</button>
+            <button id="endVoiceBtn" style="background-color: #dc3545;">End Voice Chat</button>
             <button id="muteAllBtn">Mute All</button>
             <button id="unmuteAllBtn">Unmute All</button>
             <input type="text" id="targetUser" placeholder="Target username">
@@ -134,6 +136,8 @@
             <button id="kickUserBtn">Kick User</button>
             <button id="banUserBtn">Ban User</button>
             <button id="promoteBtn">Promote to Moderator</button>
+            <input type="number" id="volume" min="0" max="100" value="100">
+            <button id="adjustVolumeBtn">Adjust Volume</button>
             <button id="endRoomBtn">End Room</button>
         </div>
         <div id="users"></div>
@@ -154,14 +158,18 @@
         const messageInput = document.getElementById('message');
         const recipientInput = document.getElementById('recipient');
         const targetUserInput = document.getElementById('targetUser');
+        const volumeInput = document.getElementById('volume');
         const joinBtn = document.getElementById('joinBtn');
         const sendBtn = document.getElementById('sendBtn');
+        const startVoiceBtn = document.getElementById('startVoiceBtn');
+        const endVoiceBtn = document.getElementById('endVoiceBtn');
         const muteAllBtn = document.getElementById('muteAllBtn');
         const unmuteAllBtn = document.getElementById('unmuteAllBtn');
         const muteUserBtn = document.getElementById('muteUserBtn');
         const kickUserBtn = document.getElementById('kickUserBtn');
         const banUserBtn = document.getElementById('banUserBtn');
         const promoteBtn = document.getElementById('promoteBtn');
+        const adjustVolumeBtn = document.getElementById('adjustVolumeBtn');
         const endRoomBtn = document.getElementById('endRoomBtn');
 
         let currentUsername = '';
@@ -202,6 +210,18 @@
             }
         });
 
+        startVoiceBtn.addEventListener('click', () => {
+            if (currentRoomId) {
+                socket.emit('start_voice_chat', { room_id: currentRoomId, username: currentUsername });
+            }
+        });
+
+        endVoiceBtn.addEventListener('click', () => {
+            if (currentRoomId) {
+                socket.emit('end_voice_chat', { room_id: currentRoomId, username: currentUsername });
+            }
+        });
+
         muteAllBtn.addEventListener('click', () => {
             if (currentRoomId) socket.emit('mute_all', { room_id: currentRoomId });
         });
@@ -235,6 +255,13 @@
             const target = targetUserInput.value.trim();
             if (target && currentRoomId) {
                 socket.emit('promote_moderator', { room_id: currentRoomId, username: target });
+            }
+        });
+
+        adjustVolumeBtn.addEventListener('click', () => {
+            const volume = parseInt(volumeInput.value);
+            if (volume >= 0 && volume <= 100 && currentRoomId) {
+                socket.emit('adjust_volume', { room_id: currentRoomId, username: currentUsername, volume: volume });
             }
         });
 
@@ -284,6 +311,20 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
+        socket.on('voice_chat_started', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('voice_chat_ended', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('voice_signal', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} is speaking...</p>`;
+        });
+
         socket.on('user_left', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} left at ${data.timestamp}</p>`;
             fetchUsers();
@@ -319,9 +360,15 @@
             fetchUsers();
         });
 
+        socket.on('volume_adjusted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username}'s volume set to ${data.volume}</p>`;
+        });
+
         socket.on('room_ended', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
-            alert('Room has been ended by the host.');
+            alert('Room has been ended by the host and all data has been deleted.');
+            currentRoomId = '';
+            usersDiv.innerHTML = '';
         });
 
         socket.on('user_typing', (data) => {
@@ -351,7 +398,7 @@
                     .then(data => {
                         usersDiv.innerHTML = '<h3>Users:</h3>';
                         data.users.forEach(user => {
-                            usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''}</p>`;
+                            usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''} ${user.in_voice_chat ? '(In Voice)' : ''}</p>`;
                         });
                     })
                     .catch(err => console.error('Error fetching users:', err));

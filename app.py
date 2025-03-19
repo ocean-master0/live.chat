@@ -68,6 +68,7 @@ class User(db.Model):
     avatar = db.Column(db.String(200), default='https://via.placeholder.com/40')
     color = db.Column(db.String(7), default='#000000')
     is_moderator = db.Column(db.Boolean, default=False)
+    in_voice_chat = db.Column(db.Boolean, default=False)
 
 class Ban(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -136,7 +137,7 @@ def create_room():
 def get_room_users(room_id):
     users = User.query.filter_by(room_id=room_id).all()
     return jsonify({
-        'users': [{'username': user.username, 'is_muted': user.is_muted, 'avatar': user.avatar, 'color': user.color, 'is_moderator': user.is_moderator} for user in users],
+        'users': [{'username': user.username, 'is_muted': user.is_muted, 'avatar': user.avatar, 'color': user.color, 'is_moderator': user.is_moderator, 'in_voice_chat': user.in_voice_chat} for user in users],
         'count': len(users),
         'is_host': False
     })
@@ -275,6 +276,66 @@ def handle_message(data):
         app.logger.error(f'Error in send_message: {str(e)}')
         emit('error', {'message': 'Server error'})
 
+@socketio.on('start_voice_chat')
+def handle_start_voice_chat(data):
+    try:
+        room_id = data.get('room_id')
+        username = data.get('username')
+        user = User.query.filter_by(room_id=room_id, username=username).first()
+        if not user:
+            emit('error', {'message': 'User not found'})
+            return
+        if user.is_muted:
+            emit('error', {'message': 'You are muted and cannot start voice chat'})
+            return
+        user.in_voice_chat = True
+        db.session.commit()
+        emit('voice_chat_started', {
+            'username': username,
+            'message': f'{username} has started voice chat',
+            'timestamp': datetime.now().strftime('%H:%M:%S')
+        }, room=room_id, broadcast=True)
+    except Exception as e:
+        app.logger.error(f'Error in start_voice_chat: {str(e)}')
+        emit('error', {'message': 'Server error'})
+
+@socketio.on('end_voice_chat')
+def handle_end_voice_chat(data):
+    try:
+        room_id = data.get('room_id')
+        username = data.get('username')
+        user = User.query.filter_by(room_id=room_id, username=username).first()
+        if not user:
+            emit('error', {'message': 'User not found'})
+            return
+        user.in_voice_chat = False
+        db.session.commit()
+        emit('voice_chat_ended', {
+            'username': username,
+            'message': f'{username} has ended voice chat',
+            'timestamp': datetime.now().strftime('%H:%M:%S')
+        }, room=room_id, broadcast=True)
+    except Exception as e:
+        app.logger.error(f'Error in end_voice_chat: {str(e)}')
+        emit('error', {'message': 'Server error'})
+
+@socketio.on('voice_signal')
+def handle_voice_signal(data):
+    try:
+        room_id = data.get('room_id')
+        username = data.get('username')
+        signal = data.get('signal')
+        user = User.query.filter_by(room_id=room_id, username=username).first()
+        if not user or not user.in_voice_chat or user.is_muted:
+            return
+        emit('voice_signal', {
+            'username': username,
+            'signal': signal
+        }, room=room_id, skip_sid=request.sid)
+    except Exception as e:
+        app.logger.error(f'Error in voice_signal: {str(e)}')
+        emit('error', {'message': 'Server error'})
+
 @socketio.on('end_room')
 def handle_end_room(data):
     try:
@@ -282,13 +343,19 @@ def handle_end_room(data):
         if not room or room.host_sid != request.sid:
             emit('error', {'message': 'Only host can end room'})
             return
-        if not room.is_persistent:
-            User.query.filter_by(room_id=room.id).delete()
-            Message.query.filter_by(room_id=room.id).delete()
-            Ban.query.filter_by(room_id=room.id).delete()
-            db.session.delete(room)
-            db.session.commit()
-        emit('room_ended', {'message': 'Room ended by host', 'timestamp': datetime.now().strftime('%H:%M:%S')}, room=room.id, broadcast=True)
+        
+        # Permanently delete all associated data
+        User.query.filter_by(room_id=room.id).delete()
+        Message.query.filter_by(room_id=room.id).delete()
+        Ban.query.filter_by(room_id=room.id).delete()
+        Reaction.query.filter(Message.room_id == room.id).delete()  # Reactions bhi delete
+        db.session.delete(room)
+        db.session.commit()
+        
+        emit('room_ended', {
+            'message': 'Room ended by host and all data deleted',
+            'timestamp': datetime.now().strftime('%H:%M:%S')
+        }, room=room.id, broadcast=True)
     except Exception as e:
         app.logger.error(f'Error in end_room: {str(e)}')
         emit('error', {'message': 'Server error'})
@@ -302,6 +369,7 @@ def handle_mute_all(data):
             return
         for user in User.query.filter_by(room_id=room.id).all():
             user.is_muted = True
+            user.in_voice_chat = False
         db.session.commit()
         emit('all_muted', {'message': 'All users muted', 'timestamp': datetime.now().strftime('%H:%M:%S')}, room=room.id, broadcast=True)
     except Exception as e:
@@ -332,6 +400,8 @@ def handle_host_mute_user(data):
             emit('error', {'message': 'Unauthorized or user not found'})
             return
         user.is_muted = data.get('mute', True)
+        if user.is_muted:
+            user.in_voice_chat = False
         db.session.commit()
         emit('user_muted', {
             'username': user.username,
@@ -415,6 +485,18 @@ def handle_user_typing(data):
         app.logger.error(f'Error in user_typing: {str(e)}')
         emit('error', {'message': 'Server error'})
 
+@socketio.on('adjust_volume')
+def handle_adjust_volume(data):
+    try:
+        user = User.query.filter_by(room_id=data.get('room_id'), username=data.get('username')).first()
+        if user and 0 <= data.get('volume', 100) <= 100:
+            user.volume_level = data.get('volume')
+            db.session.commit()
+            emit('volume_adjusted', {'username': user.username, 'volume': user.volume_level}, room=data.get('room_id'), broadcast=True)
+    except Exception as e:
+        app.logger.error(f'Error in adjust_volume: {str(e)}')
+        emit('error', {'message': 'Server error'})
+
 @socketio.on('disconnect')
 def handle_disconnect():
     try:
@@ -429,7 +511,12 @@ def handle_disconnect():
                 'user_count': User.query.filter_by(room_id=room_id).count()
             }, room=room_id, broadcast=True)
             room = db.session.get(Room, room_id)
-            if room and room.host_sid == request.sid and User.query.filter_by(room_id=room_id).count() == 0 and not room.is_persistent:
+            if room and room.host_sid == request.sid and User.query.filter_by(room_id=room_id).count() == 0:
+                # Host disconnect hone par bhi saara data delete ho
+                User.query.filter_by(room_id=room.id).delete()
+                Message.query.filter_by(room_id=room.id).delete()
+                Ban.query.filter_by(room_id=room.id).delete()
+                Reaction.query.filter(Message.room_id == room.id).delete()
                 db.session.delete(room)
                 db.session.commit()
     except Exception as e:
