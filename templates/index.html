@@ -174,6 +174,8 @@
 
         let currentUsername = '';
         let currentRoomId = '';
+        let localStream = null;
+        const peerConnections = {};
 
         joinBtn.addEventListener('click', () => {
             const roomId = roomIdInput.value.trim();
@@ -210,17 +212,33 @@
             }
         });
 
-        startVoiceBtn.addEventListener('click', () => {
-            if (currentRoomId) {
+        async function startVoiceChat() {
+            if (!currentRoomId) return;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 socket.emit('start_voice_chat', { room_id: currentRoomId, username: currentUsername });
+                setupPeerConnections();
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+                messagesDiv.innerHTML += `<p style="color: red;">Error: Could not access microphone</p>`;
             }
-        });
+        }
 
-        endVoiceBtn.addEventListener('click', () => {
-            if (currentRoomId) {
-                socket.emit('end_voice_chat', { room_id: currentRoomId, username: currentUsername });
+        function endVoiceChat() {
+            if (!currentRoomId) return;
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
             }
-        });
+            for (let sid in peerConnections) {
+                peerConnections[sid].close();
+                delete peerConnections[sid];
+            }
+            socket.emit('end_voice_chat', { room_id: currentRoomId, username: currentUsername });
+        }
+
+        startVoiceBtn.addEventListener('click', startVoiceChat);
+        endVoiceBtn.addEventListener('click', endVoiceChat);
 
         muteAllBtn.addEventListener('click', () => {
             if (currentRoomId) socket.emit('mute_all', { room_id: currentRoomId });
@@ -273,6 +291,103 @@
             if (currentRoomId) socket.emit('user_typing', { room_id: currentRoomId, username: currentUsername });
         });
 
+        function setupPeerConnections() {
+            fetch(`/api/rooms/${currentRoomId}/users`)
+                .then(response => response.json())
+                .then(data => {
+                    data.users.forEach(user => {
+                        if (user.username !== currentUsername && user.in_voice_chat) {
+                            createPeerConnection(user.socket_id);
+                        }
+                    });
+                });
+        }
+
+        function createPeerConnection(sid) {
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            peerConnections[sid] = pc;
+
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+            pc.ontrack = (event) => {
+                const audio = new Audio();
+                audio.srcObject = event.streams[0];
+                audio.autoplay = true;
+                audio.volume = volumeInput.value / 100;
+            };
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('voice_signal', {
+                        room_id: currentRoomId,
+                        username: currentUsername,
+                        signal: { type: 'candidate', candidate: event.candidate }
+                    });
+                }
+            };
+
+            pc.createOffer()
+                .then(offer => pc.setLocalDescription(offer))
+                .then(() => {
+                    socket.emit('voice_signal', {
+                        room_id: currentRoomId,
+                        username: currentUsername,
+                        signal: { type: 'offer', sdp: pc.localDescription }
+                    });
+                });
+        }
+
+        socket.on('voice_signal', (data) => {
+            const { username, signal, from_sid } = data;
+            if (username === currentUsername) return;
+
+            let pc = peerConnections[from_sid];
+            if (!pc) {
+                pc = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                peerConnections[from_sid] = pc;
+
+                pc.ontrack = (event) => {
+                    const audio = new Audio();
+                    audio.srcObject = event.streams[0];
+                    audio.autoplay = true;
+                    audio.volume = volumeInput.value / 100;
+                };
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        socket.emit('voice_signal', {
+                            room_id: currentRoomId,
+                            username: currentUsername,
+                            signal: { type: 'candidate', candidate: event.candidate }
+                        });
+                    }
+                };
+
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            }
+
+            if (signal.type === 'offer') {
+                pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
+                    .then(() => pc.createAnswer())
+                    .then(answer => pc.setLocalDescription(answer))
+                    .then(() => {
+                        socket.emit('voice_signal', {
+                            room_id: currentRoomId,
+                            username: currentUsername,
+                            signal: { type: 'answer', sdp: pc.localDescription }
+                        });
+                    });
+            } else if (signal.type === 'answer') {
+                pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+            } else if (signal.type === 'candidate') {
+                pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            }
+        });
+
         socket.on('connect', () => {
             console.log('Connected to server');
         });
@@ -299,6 +414,9 @@
         socket.on('user_joined', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} joined at ${data.timestamp}</p>`;
             fetchUsers();
+            if (localStream && data.username !== currentUsername) {
+                createPeerConnection(data.socket_id);
+            }
         });
 
         socket.on('new_message', (data) => {
@@ -314,25 +432,33 @@
         socket.on('voice_chat_started', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
+            if (data.username !== currentUsername && localStream) {
+                createPeerConnection(data.socket_id);
+            }
         });
 
         socket.on('voice_chat_ended', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
-        });
-
-        socket.on('voice_signal', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} is speaking...</p>`;
+            if (peerConnections[data.socket_id]) {
+                peerConnections[data.socket_id].close();
+                delete peerConnections[data.socket_id];
+            }
         });
 
         socket.on('user_left', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} left at ${data.timestamp}</p>`;
             fetchUsers();
+            if (peerConnections[data.socket_id]) {
+                peerConnections[data.socket_id].close();
+                delete peerConnections[data.socket_id];
+            }
         });
 
         socket.on('all_muted', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
+            endVoiceChat();
         });
 
         socket.on('all_unmuted', (data) => {
@@ -343,6 +469,7 @@
         socket.on('user_muted', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
+            if (data.username === currentUsername && data.muted) endVoiceChat();
         });
 
         socket.on('user_kicked', (data) => {
@@ -362,6 +489,13 @@
 
         socket.on('volume_adjusted', (data) => {
             messagesDiv.innerHTML += `<p>${data.username}'s volume set to ${data.volume}</p>`;
+            if (data.username === currentUsername) {
+                for (let sid in peerConnections) {
+                    peerConnections[sid].getReceivers().forEach(receiver => {
+                        receiver.audioElement.volume = data.volume / 100;
+                    });
+                }
+            }
         });
 
         socket.on('room_ended', (data) => {
@@ -369,6 +503,7 @@
             alert('Room has been ended by the host and all data has been deleted.');
             currentRoomId = '';
             usersDiv.innerHTML = '';
+            endVoiceChat();
         });
 
         socket.on('user_typing', (data) => {

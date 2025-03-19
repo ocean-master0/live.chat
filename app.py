@@ -330,7 +330,8 @@ def handle_voice_signal(data):
             return
         emit('voice_signal', {
             'username': username,
-            'signal': signal
+            'signal': signal,
+            'from_sid': request.sid
         }, room=room_id, skip_sid=request.sid)
     except Exception as e:
         app.logger.error(f'Error in voice_signal: {str(e)}')
@@ -344,11 +345,15 @@ def handle_end_room(data):
             emit('error', {'message': 'Only host can end room'})
             return
         
-        # Permanently delete all associated data
+        # Fetch message IDs for reactions deletion
+        message_ids = [msg.id for msg in Message.query.filter_by(room_id=room.id).all()]
+        
+        # Delete all associated data
         User.query.filter_by(room_id=room.id).delete()
         Message.query.filter_by(room_id=room.id).delete()
         Ban.query.filter_by(room_id=room.id).delete()
-        Reaction.query.filter(Message.room_id == room.id).delete()  # Reactions bhi delete
+        if message_ids:
+            Reaction.query.filter(Reaction.message_id.in_(message_ids)).delete(synchronize_session=False)
         db.session.delete(room)
         db.session.commit()
         
@@ -512,11 +517,12 @@ def handle_disconnect():
             }, room=room_id, broadcast=True)
             room = db.session.get(Room, room_id)
             if room and room.host_sid == request.sid and User.query.filter_by(room_id=room_id).count() == 0:
-                # Host disconnect hone par bhi saara data delete ho
+                message_ids = [msg.id for msg in Message.query.filter_by(room_id=room.id).all()]
                 User.query.filter_by(room_id=room.id).delete()
                 Message.query.filter_by(room_id=room.id).delete()
                 Ban.query.filter_by(room_id=room.id).delete()
-                Reaction.query.filter(Message.room_id == room.id).delete()
+                if message_ids:
+                    Reaction.query.filter(Reaction.message_id.in_(message_ids)).delete(synchronize_session=False)
                 db.session.delete(room)
                 db.session.commit()
     except Exception as e:
