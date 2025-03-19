@@ -137,7 +137,7 @@ def create_room():
 def get_room_users(room_id):
     users = User.query.filter_by(room_id=room_id).all()
     return jsonify({
-        'users': [{'username': user.username, 'is_muted': user.is_muted, 'avatar': user.avatar, 'color': user.color, 'is_moderator': user.is_moderator, 'in_voice_chat': user.in_voice_chat} for user in users],
+        'users': [{'username': user.username, 'socket_id': user.socket_id, 'is_muted': user.is_muted, 'avatar': user.avatar, 'color': user.color, 'is_moderator': user.is_moderator, 'in_voice_chat': user.in_voice_chat} for user in users],
         'count': len(users),
         'is_host': False
     })
@@ -185,6 +185,7 @@ def handle_join_room(data):
         
         emit('user_joined', {
             'username': username,
+            'socket_id': request.sid,
             'timestamp': datetime.now().strftime('%H:%M:%S'),
             'user_count': User.query.filter_by(room_id=room_id).count()
         }, room=room_id, broadcast=True)
@@ -207,6 +208,7 @@ def handle_join_room(data):
             'message': f'Welcome to room {room_id}, {username}!',
             'room_id': room_id,
             'is_host': is_host,
+            'socket_id': request.sid,
             'history': history
         })
         
@@ -292,6 +294,7 @@ def handle_start_voice_chat(data):
         db.session.commit()
         emit('voice_chat_started', {
             'username': username,
+            'socket_id': request.sid,
             'message': f'{username} has started voice chat',
             'timestamp': datetime.now().strftime('%H:%M:%S')
         }, room=room_id, broadcast=True)
@@ -312,6 +315,7 @@ def handle_end_voice_chat(data):
         db.session.commit()
         emit('voice_chat_ended', {
             'username': username,
+            'socket_id': request.sid,
             'message': f'{username} has ended voice chat',
             'timestamp': datetime.now().strftime('%H:%M:%S')
         }, room=room_id, broadcast=True)
@@ -325,14 +329,22 @@ def handle_voice_signal(data):
         room_id = data.get('room_id')
         username = data.get('username')
         signal = data.get('signal')
+        to_sid = data.get('to_sid')
         user = User.query.filter_by(room_id=room_id, username=username).first()
         if not user or not user.in_voice_chat or user.is_muted:
             return
-        emit('voice_signal', {
-            'username': username,
-            'signal': signal,
-            'from_sid': request.sid
-        }, room=room_id, skip_sid=request.sid)
+        if to_sid:
+            emit('voice_signal', {
+                'username': username,
+                'signal': signal,
+                'from_sid': request.sid
+            }, to=to_sid)
+        else:
+            emit('voice_signal', {
+                'username': username,
+                'signal': signal,
+                'from_sid': request.sid
+            }, room=room_id, skip_sid=request.sid)
     except Exception as e:
         app.logger.error(f'Error in voice_signal: {str(e)}')
         emit('error', {'message': 'Server error'})
@@ -345,10 +357,7 @@ def handle_end_room(data):
             emit('error', {'message': 'Only host can end room'})
             return
         
-        # Fetch message IDs for reactions deletion
         message_ids = [msg.id for msg in Message.query.filter_by(room_id=room.id).all()]
-        
-        # Delete all associated data
         User.query.filter_by(room_id=room.id).delete()
         Message.query.filter_by(room_id=room.id).delete()
         Ban.query.filter_by(room_id=room.id).delete()
@@ -512,6 +521,7 @@ def handle_disconnect():
             db.session.commit()
             emit('user_left', {
                 'username': user.username,
+                'socket_id': request.sid,
                 'timestamp': datetime.now().strftime('%H:%M:%S'),
                 'user_count': User.query.filter_by(room_id=room_id).count()
             }, room=room_id, broadcast=True)
