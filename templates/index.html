@@ -84,7 +84,11 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
     <script>
-        const socket = io.connect(window.location.origin);
+        const socket = io.connect(window.location.origin, {
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000
+        });
         const roomId = "{{ room_id }}";
         const messagesDiv = document.getElementById('messages');
         const usersDiv = document.getElementById('users');
@@ -181,6 +185,23 @@
             socket.emit('user_typing', { room_id: roomId, username: currentUsername });
         });
 
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            messagesDiv.innerHTML += `<p style="color: orange;">Disconnected. Attempting to reconnect...</p>`;
+        });
+
+        socket.on('reconnect', () => {
+            console.log('Reconnected to server');
+            messagesDiv.innerHTML += `<p style="color: green;">Reconnected to server!</p>`;
+            if (currentUsername) {
+                socket.emit('join_room', { room_id: roomId, username: currentUsername });
+            }
+        });
+
         socket.on('join_success', (data) => {
             messagesDiv.innerHTML += `<p>${data.message}</p>`;
             fetchUsers();
@@ -246,7 +267,7 @@
         socket.on('user_typing', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} is typing...</p>`;
             setTimeout(() => {
-                messagesDiv.lastElementChild.remove();
+                if (messagesDiv.lastElementChild) messagesDiv.lastElementChild.remove();
             }, 2000);
         });
 
@@ -267,7 +288,8 @@
                     data.users.forEach(user => {
                         usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''}</p>`;
                     });
-                });
+                })
+                .catch(err => console.error('Error fetching users:', err));
         }
     </script>
 </body>
