@@ -86,8 +86,15 @@
             margin-bottom: 10px;
             color: #1a73e8;
         }
+        .join-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
         @media (max-width: 600px) {
-            .input-group, .controls {
+            .input-group, .controls, .join-section .input-group {
                 flex-direction: column;
                 align-items: stretch;
             }
@@ -101,12 +108,17 @@
     </style>
 </head>
 <body>
-    <h1>Chat Room: {{ room_id }}</h1>
+    <h1>Live Chat</h1>
     <div class="container">
-        <div class="input-group">
-            <input type="text" id="username" placeholder="Enter your username">
-            <input type="text" id="password" placeholder="Room password (optional)">
-            <button id="joinBtn">Join Room</button>
+        <div class="join-section">
+            <h2>Join or Create Room</h2>
+            <div class="input-group">
+                <input type="text" id="roomId" placeholder="Enter Room ID" value="{{ room_id }}">
+                <input type="text" id="username" placeholder="Enter your username">
+                <input type="text" id="password" placeholder="Room password (optional)">
+                <button id="joinBtn">Join Room</button>
+                <button id="setPasswordBtn" style="background-color: #28a745;" onclick="setRoomPassword()">Set Password (Host)</button>
+            </div>
         </div>
         <div id="messages"></div>
         <div class="input-group">
@@ -122,8 +134,6 @@
             <button id="kickUserBtn">Kick User</button>
             <button id="banUserBtn">Ban User</button>
             <button id="promoteBtn">Promote to Moderator</button>
-            <input type="number" id="volume" min="0" max="100" value="100">
-            <button id="adjustVolumeBtn">Adjust Volume</button>
             <button id="endRoomBtn">End Room</button>
         </div>
         <div id="users"></div>
@@ -136,15 +146,14 @@
             reconnectionAttempts: 10,
             reconnectionDelay: 1000
         });
-        const roomId = "{{ room_id }}";
         const messagesDiv = document.getElementById('messages');
         const usersDiv = document.getElementById('users');
+        const roomIdInput = document.getElementById('roomId');
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
         const messageInput = document.getElementById('message');
         const recipientInput = document.getElementById('recipient');
         const targetUserInput = document.getElementById('targetUser');
-        const volumeInput = document.getElementById('volume');
         const joinBtn = document.getElementById('joinBtn');
         const sendBtn = document.getElementById('sendBtn');
         const muteAllBtn = document.getElementById('muteAllBtn');
@@ -153,26 +162,38 @@
         const kickUserBtn = document.getElementById('kickUserBtn');
         const banUserBtn = document.getElementById('banUserBtn');
         const promoteBtn = document.getElementById('promoteBtn');
-        const adjustVolumeBtn = document.getElementById('adjustVolumeBtn');
         const endRoomBtn = document.getElementById('endRoomBtn');
 
         let currentUsername = '';
+        let currentRoomId = '';
 
         joinBtn.addEventListener('click', () => {
+            const roomId = roomIdInput.value.trim();
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
-            if (username) {
+            if (roomId && username) {
                 currentUsername = username;
+                currentRoomId = roomId;
                 socket.emit('join_room', { room_id: roomId, username: username, password: password });
             }
         });
 
+        function setRoomPassword() {
+            const roomId = roomIdInput.value.trim();
+            const password = passwordInput.value.trim();
+            if (roomId && password) {
+                socket.emit('set_password', { room_id: roomId, password: password });
+            } else {
+                alert('Please enter both Room ID and Password');
+            }
+        }
+
         sendBtn.addEventListener('click', () => {
             const message = messageInput.value.trim();
             const recipient = recipientInput.value.trim();
-            if (message) {
+            if (message && currentRoomId) {
                 socket.emit('send_message', { 
-                    room_id: roomId, 
+                    room_id: currentRoomId, 
                     username: currentUsername, 
                     message: message, 
                     recipient: recipient || null 
@@ -182,54 +203,47 @@
         });
 
         muteAllBtn.addEventListener('click', () => {
-            socket.emit('mute_all', { room_id: roomId });
+            if (currentRoomId) socket.emit('mute_all', { room_id: currentRoomId });
         });
 
         unmuteAllBtn.addEventListener('click', () => {
-            socket.emit('unmute_all', { room_id: roomId });
+            if (currentRoomId) socket.emit('unmute_all', { room_id: currentRoomId });
         });
 
         muteUserBtn.addEventListener('click', () => {
             const target = targetUserInput.value.trim();
-            if (target) {
-                socket.emit('host_mute_user', { room_id: roomId, username: target, mute: true });
+            if (target && currentRoomId) {
+                socket.emit('host_mute_user', { room_id: currentRoomId, username: target, mute: true });
             }
         });
 
         kickUserBtn.addEventListener('click', () => {
             const target = targetUserInput.value.trim();
-            if (target) {
-                socket.emit('kick_user', { room_id: roomId, username: target });
+            if (target && currentRoomId) {
+                socket.emit('kick_user', { room_id: currentRoomId, username: target });
             }
         });
 
         banUserBtn.addEventListener('click', () => {
             const target = targetUserInput.value.trim();
-            if (target) {
-                socket.emit('ban_user', { room_id: roomId, username: target });
+            if (target && currentRoomId) {
+                socket.emit('ban_user', { room_id: currentRoomId, username: target });
             }
         });
 
         promoteBtn.addEventListener('click', () => {
             const target = targetUserInput.value.trim();
-            if (target) {
-                socket.emit('promote_moderator', { room_id: roomId, username: target });
-            }
-        });
-
-        adjustVolumeBtn.addEventListener('click', () => {
-            const volume = parseInt(volumeInput.value);
-            if (volume >= 0 && volume <= 100) {
-                socket.emit('adjust_volume', { room_id: roomId, username: currentUsername, volume: volume });
+            if (target && currentRoomId) {
+                socket.emit('promote_moderator', { room_id: currentRoomId, username: target });
             }
         });
 
         endRoomBtn.addEventListener('click', () => {
-            socket.emit('end_room', { room_id: roomId });
+            if (currentRoomId) socket.emit('end_room', { room_id: currentRoomId });
         });
 
         messageInput.addEventListener('input', () => {
-            socket.emit('user_typing', { room_id: roomId, username: currentUsername });
+            if (currentRoomId) socket.emit('user_typing', { room_id: currentRoomId, username: currentUsername });
         });
 
         socket.on('connect', () => {
@@ -244,13 +258,14 @@
         socket.on('reconnect', () => {
             console.log('Reconnected to server');
             messagesDiv.innerHTML += `<p style="color: green;">Reconnected to server!</p>`;
-            if (currentUsername) {
-                socket.emit('join_room', { room_id: roomId, username: currentUsername });
+            if (currentUsername && currentRoomId) {
+                socket.emit('join_room', { room_id: currentRoomId, username: currentUsername });
             }
         });
 
         socket.on('join_success', (data) => {
             messagesDiv.innerHTML += `<p>${data.message}</p>`;
+            currentRoomId = data.room_id;
             fetchUsers();
         });
 
@@ -304,10 +319,6 @@
             fetchUsers();
         });
 
-        socket.on('volume_adjusted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username}'s volume set to ${data.volume}</p>`;
-        });
-
         socket.on('room_ended', (data) => {
             messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
             alert('Room has been ended by the host.');
@@ -320,6 +331,10 @@
             }, 2000);
         });
 
+        socket.on('password_set', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message}</p>`;
+        });
+
         socket.on('error', (data) => {
             messagesDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
         });
@@ -330,15 +345,17 @@
         });
 
         function fetchUsers() {
-            fetch(`/api/rooms/${roomId}/users`)
-                .then(response => response.json())
-                .then(data => {
-                    usersDiv.innerHTML = '<h3>Users:</h3>';
-                    data.users.forEach(user => {
-                        usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''}</p>`;
-                    });
-                })
-                .catch(err => console.error('Error fetching users:', err));
+            if (currentRoomId) {
+                fetch(`/api/rooms/${currentRoomId}/users`)
+                    .then(response => response.json())
+                    .then(data => {
+                        usersDiv.innerHTML = '<h3>Users:</h3>';
+                        data.users.forEach(user => {
+                            usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''}</p>`;
+                        });
+                    })
+                    .catch(err => console.error('Error fetching users:', err));
+            }
         }
     </script>
 </body>

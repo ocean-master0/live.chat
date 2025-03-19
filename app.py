@@ -14,7 +14,7 @@ import re
 from dotenv import load_dotenv
 import eventlet
 
-eventlet.monkey_patch()  # Eventlet ke liye patch
+eventlet.monkey_patch()
 
 load_dotenv()
 
@@ -238,10 +238,8 @@ def handle_message(data):
         username = data.get('username')
         message_content = sanitize_input(data.get('message', ''))
         recipient = data.get('recipient')
-        file_data = data.get('file_data')
-        file_type = data.get('file_type')
         
-        if not room_id or not username or (not message_content and not file_data):
+        if not room_id or not username or not message_content:
             emit('error', {'message': 'Missing required data'})
             return
             
@@ -250,15 +248,8 @@ def handle_message(data):
             emit('error', {'message': 'User not found'})
             return
             
-        encrypted_content = encrypt_message(message_content) if message_content else None
-        new_message = Message(
-            room_id=room_id,
-            username=username,
-            content=encrypted_content,
-            recipient=recipient,
-            file_data=file_data,
-            file_type=file_type
-        )
+        encrypted_content = encrypt_message(message_content)
+        new_message = Message(room_id=room_id, username=username, content=encrypted_content, recipient=recipient)
         db.session.add(new_message)
         db.session.commit()
         
@@ -268,8 +259,6 @@ def handle_message(data):
             'message': message_content,
             'timestamp': timestamp,
             'message_id': new_message.id,
-            'file_data': file_data,
-            'file_type': file_type,
             'reactions': []
         }
         
@@ -284,30 +273,6 @@ def handle_message(data):
         
     except Exception as e:
         app.logger.error(f'Error in send_message: {str(e)}')
-        emit('error', {'message': 'Server error'})
-
-@socketio.on('add_reaction')
-def handle_reaction(data):
-    try:
-        message_id = data.get('message_id')
-        username = data.get('username')
-        emoji = data.get('emoji')
-        message = db.session.get(Message, message_id)
-        if not message or emoji not in ['👍', '😂', '❤️']:
-            emit('error', {'message': 'Invalid reaction'})
-            return
-        if Reaction.query.filter_by(message_id=message_id, username=username).first():
-            return
-        reaction = Reaction(message_id=message_id, username=username, emoji=emoji)
-        db.session.add(reaction)
-        db.session.commit()
-        emit('reaction_added', {
-            'message_id': message_id,
-            'username': username,
-            'emoji': emoji
-        }, room=message.room_id, broadcast=True)
-    except Exception as e:
-        app.logger.error(f'Error in add_reaction: {str(e)}')
         emit('error', {'message': 'Server error'})
 
 @socketio.on('end_room')
@@ -448,43 +413,6 @@ def handle_user_typing(data):
             emit('user_typing', {'username': user.username}, room=data.get('room_id'), skip_sid=request.sid)
     except Exception as e:
         app.logger.error(f'Error in user_typing: {str(e)}')
-        emit('error', {'message': 'Server error'})
-
-@socketio.on('voice_signal')
-def handle_voice_signal(data):
-    try:
-        user = User.query.filter_by(room_id=data.get('room_id'), username=data.get('username')).first()
-        if user and not user.is_muted:
-            emit('voice_signal', {
-                'username': user.username,
-                'signal': data.get('signal')
-            }, room=data.get('room_id'), skip_sid=request.sid)
-    except Exception as e:
-        app.logger.error(f'Error in voice_signal: {str(e)}')
-        emit('error', {'message': 'Server error'})
-
-@socketio.on('mute_user')
-def handle_mute_user(data):
-    try:
-        user = User.query.filter_by(room_id=data.get('room_id'), username=data.get('username')).first()
-        if user:
-            user.is_muted = data.get('mute', True)
-            db.session.commit()
-            emit('user_muted', {'username': user.username, 'muted': user.is_muted}, room=data.get('room_id'), broadcast=True)
-    except Exception as e:
-        app.logger.error(f'Error in mute_user: {str(e)}')
-        emit('error', {'message': 'Server error'})
-
-@socketio.on('adjust_volume')
-def handle_adjust_volume(data):
-    try:
-        user = User.query.filter_by(room_id=data.get('room_id'), username=data.get('username')).first()
-        if user and 0 <= data.get('volume', 100) <= 100:
-            user.volume_level = data.get('volume')
-            db.session.commit()
-            emit('volume_adjusted', {'username': user.username, 'volume': user.volume_level}, room=data.get('room_id'), broadcast=True)
-    except Exception as e:
-        app.logger.error(f'Error in adjust_volume: {str(e)}')
         emit('error', {'message': 'Server error'})
 
 @socketio.on('disconnect')
