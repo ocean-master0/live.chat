@@ -3,7 +3,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
-import time
 import random
 import string
 import logging
@@ -13,6 +12,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
 import re
 from dotenv import load_dotenv
+import eventlet
+
+eventlet.monkey_patch()  # Eventlet ke liye patch
 
 load_dotenv()
 
@@ -22,7 +24,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'sqlite:///cha
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*", engineio_logger=True)
+socketio = SocketIO(app, async_mode='eventlet', cors_allowed_origins="*")
 CORS(app)
 
 if not app.debug:

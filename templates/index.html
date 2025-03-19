@@ -3,84 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App</title>
+    <title>Live Chat</title>
     <style>
-        body {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
+        }
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
         h1 {
-            color: #333;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            color: #1a73e8;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group, .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            flex: 1 1 100%;
+            max-width: 100%;
+            font-size: 1em;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1 1 auto;
+            font-size: 0.9em;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1557b0;
         }
         #messages {
-            border: 1px solid #ccc;
+            flex-grow: 1;
+            border: 1px solid #ddd;
             padding: 15px;
-            height: 300px;
-            overflow-y: scroll;
             background-color: #fff;
             border-radius: 5px;
+            overflow-y: auto;
+            margin-bottom: 15px;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         #messages p {
             margin: 5px 0;
-        }
-        input[type="text"], input[type="number"] {
-            padding: 8px;
-            margin: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 200px;
-        }
-        button {
-            padding: 10px 15px;
-            margin: 5px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #0056b3;
+            word-wrap: break-word;
         }
         #users {
-            margin-top: 20px;
-            padding: 10px;
             border: 1px solid #ddd;
+            padding: 15px;
             background-color: #fff;
             border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
         #users h3 {
-            margin-top: 0;
-            color: #333;
+            margin-bottom: 10px;
+            color: #1a73e8;
         }
-        #users p {
-            margin: 5px 0;
+        @media (max-width: 600px) {
+            .input-group, .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            button {
+                width: 100%;
+            }
+            h1 {
+                font-size: 1.2em;
+            }
         }
     </style>
 </head>
 <body>
     <h1>Chat Room: {{ room_id }}</h1>
-    <input type="text" id="username" placeholder="Enter your username">
-    <input type="text" id="password" placeholder="Room password (optional)">
-    <button id="joinBtn">Join Room</button>
-    <div id="messages"></div>
-    <input type="text" id="message" placeholder="Type a message">
-    <button id="sendBtn">Send Message</button>
-    <input type="text" id="recipient" placeholder="Recipient (optional)">
-    <button id="muteAllBtn">Mute All</button>
-    <button id="unmuteAllBtn">Unmute All</button>
-    <input type="text" id="targetUser" placeholder="Target username">
-    <button id="muteUserBtn">Mute User</button>
-    <button id="kickUserBtn">Kick User</button>
-    <button id="banUserBtn">Ban User</button>
-    <button id="promoteBtn">Promote to Moderator</button>
-    <input type="number" id="volume" min="0" max="100" value="100">
-    <button id="adjustVolumeBtn">Adjust Volume</button>
-    <button id="endRoomBtn">End Room</button>
-    <div id="users"></div>
+    <div class="container">
+        <div class="input-group">
+            <input type="text" id="username" placeholder="Enter your username">
+            <input type="text" id="password" placeholder="Room password (optional)">
+            <button id="joinBtn">Join Room</button>
+        </div>
+        <div id="messages"></div>
+        <div class="input-group">
+            <input type="text" id="message" placeholder="Type a message">
+            <input type="text" id="recipient" placeholder="Recipient (optional)">
+            <button id="sendBtn">Send Message</button>
+        </div>
+        <div class="controls">
+            <button id="muteAllBtn">Mute All</button>
+            <button id="unmuteAllBtn">Unmute All</button>
+            <input type="text" id="targetUser" placeholder="Target username">
+            <button id="muteUserBtn">Mute User</button>
+            <button id="kickUserBtn">Kick User</button>
+            <button id="banUserBtn">Ban User</button>
+            <button id="promoteBtn">Promote to Moderator</button>
+            <input type="number" id="volume" min="0" max="100" value="100">
+            <button id="adjustVolumeBtn">Adjust Volume</button>
+            <button id="endRoomBtn">End Room</button>
+        </div>
+        <div id="users"></div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
     <script>
@@ -214,10 +261,12 @@
 
         socket.on('new_message', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} [${data.timestamp}]: ${data.message}</p>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
         socket.on('private_message', (data) => {
             messagesDiv.innerHTML += `<p>${data.username} to ${data.recipient} [${data.timestamp}]: ${data.message} (Private)</p>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
         socket.on('user_left', (data) => {
