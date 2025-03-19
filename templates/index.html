@@ -3,144 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Chat</title>
+    <title>Live Chat Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
         body {
-            background-color: #f0f2f5;
-            color: #333;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             min-height: 100vh;
+            transition: background 0.3s;
         }
-        h1 {
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-            color: #1a73e8;
+        .dark-mode {
+            background: linear-gradient(135deg, #1f2937, #4b5563);
+            color: #e5e7eb;
         }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
+        .chat-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
-        .input-group, .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: center;
+        .dark-mode .chat-container {
+            background: #374151;
         }
-        input[type="text"], input[type="number"] {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            flex: 1 1 100%;
-            max-width: 100%;
-            font-size: 1em;
+        .btn {
+            transition: all 0.2s;
         }
-        button {
-            padding: 10px 20px;
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            flex: 1 1 auto;
-            font-size: 0.9em;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #1557b0;
+        .btn:hover {
+            transform: translateY(-1px);
         }
         #messages {
-            flex-grow: 1;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 5px;
+            max-height: 400px;
             overflow-y: auto;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        #messages p {
+        .message {
+            padding: 10px;
+            border-radius: 8px;
             margin: 5px 0;
-            word-wrap: break-word;
+            background: #f3f4f6;
         }
-        #users {
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        #users h3 {
-            margin-bottom: 10px;
-            color: #1a73e8;
-        }
-        .join-section {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #fff;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        @media (max-width: 600px) {
-            .input-group, .controls, .join-section .input-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            button {
-                width: 100%;
-            }
-            h1 {
-                font-size: 1.2em;
-            }
+        .dark-mode .message {
+            background: #4b5563;
         }
     </style>
 </head>
-<body>
-    <h1>Live Chat</h1>
-    <div class="container">
-        <div class="join-section">
-            <h2>Join or Create Room</h2>
-            <div class="input-group">
-                <input type="text" id="roomId" placeholder="Enter Room ID" value="{{ room_id }}">
-                <input type="text" id="username" placeholder="Enter your username">
-                <input type="text" id="password" placeholder="Room password (optional)">
-                <button id="joinBtn">Join Room</button>
-                <button id="setPasswordBtn" style="background-color: #28a745;" onclick="setRoomPassword()">Set Password (Host)</button>
+<body class="flex items-center justify-center p-4">
+    <div class="chat-container w-full max-w-2xl">
+        <div class="flex justify-between items-center p-4 bg-blue-600 text-white">
+            <h1 class="text-xl font-bold">Live Chat Pro</h1>
+            <button id="darkModeToggle" class="btn bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded">Toggle Dark Mode</button>
+        </div>
+        
+        <div class="p-6">
+            <div class="join-section mb-6">
+                <h2 class="text-lg font-semibold mb-2">Join or Create Room</h2>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <input type="text" id="roomId" placeholder="Enter Room ID" value="{{ room_id }}" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="username" placeholder="Enter your username" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="password" placeholder="Room password (optional)" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="joinBtn" class="btn bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-2">Join Room</button>
+                    <button id="setPasswordBtn" onclick="setRoomPassword()" class="btn bg-green-600 hover:bg-green-700 text-white rounded-lg p-2">Set Password (Host)</button>
+                </div>
             </div>
+
+            <div id="messages" class="mb-6"></div>
+
+            <div class="input-group grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+                <input type="text" id="message" placeholder="Type a message" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="text" id="recipient" placeholder="Recipient (optional)" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="sendBtn" class="btn bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-2">Send Message</button>
+            </div>
+
+            <div class="controls grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                <button id="startVoiceBtn" class="btn bg-green-600 hover:bg-green-700 text-white rounded-lg p-2">Start Voice Chat</button>
+                <button id="endVoiceBtn" class="btn bg-red-600 hover:bg-red-700 text-white rounded-lg p-2">End Voice Chat</button>
+                <button id="muteAllBtn" class="btn bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg p-2">Mute All</button>
+                <button id="unmuteAllBtn" class="btn bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg p-2">Unmute All</button>
+                <input type="text" id="targetUser" placeholder="Target username" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 col-span-2 sm:col-span-1">
+                <button id="muteUserBtn" class="btn bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg p-2">Mute User</button>
+                <button id="kickUserBtn" class="btn bg-red-600 hover:bg-red-700 text-white rounded-lg p-2">Kick User</button>
+                <button id="banUserBtn" class="btn bg-red-600 hover:bg-red-700 text-white rounded-lg p-2">Ban User</button>
+                <button id="promoteBtn" class="btn bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-2">Promote Moderator</button>
+                <input type="number" id="volume" min="0" max="100" value="100" class="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button id="adjustVolumeBtn" class="btn bg-blue-600 hover:bg-blue-700 text-white rounded-lg p-2">Adjust Volume</button>
+                <button id="endRoomBtn" class="btn bg-red-600 hover:bg-red-700 text-white rounded-lg p-2 col-span-2 sm:col-span-1">End Room</button>
+            </div>
+
+            <div id="users" class="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg"></div>
         </div>
-        <div id="messages"></div>
-        <div class="input-group">
-            <input type="text" id="message" placeholder="Type a message">
-            <input type="text" id="recipient" placeholder="Recipient (optional)">
-            <button id="sendBtn">Send Message</button>
-        </div>
-        <div class="controls">
-            <button id="startVoiceBtn" style="background-color: #28a745;">Start Voice Chat</button>
-            <button id="endVoiceBtn" style="background-color: #dc3545;">End Voice Chat</button>
-            <button id="muteAllBtn">Mute All</button>
-            <button id="unmuteAllBtn">Unmute All</button>
-            <input type="text" id="targetUser" placeholder="Target username">
-            <button id="muteUserBtn">Mute User</button>
-            <button id="kickUserBtn">Kick User</button>
-            <button id="banUserBtn">Ban User</button>
-            <button id="promoteBtn">Promote to Moderator</button>
-            <input type="number" id="volume" min="0" max="100" value="100">
-            <button id="adjustVolumeBtn">Adjust Volume</button>
-            <button id="endRoomBtn">End Room</button>
-        </div>
-        <div id="users"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
@@ -171,12 +120,12 @@
         const promoteBtn = document.getElementById('promoteBtn');
         const adjustVolumeBtn = document.getElementById('adjustVolumeBtn');
         const endRoomBtn = document.getElementById('endRoomBtn');
+        const darkModeToggle = document.getElementById('darkModeToggle');
 
         let currentUsername = '';
         let currentRoomId = '';
-        let localStream = null;
-        let mySocketId = '';
-        const peerConnections = {};
+        let audioContext = null;
+        let mediaRecorder = null;
 
         joinBtn.addEventListener('click', () => {
             const roomId = roomIdInput.value.trim();
@@ -214,29 +163,39 @@
         });
 
         async function startVoiceChat() {
-            if (!currentRoomId || !mySocketId) return;
+            if (!currentRoomId) return;
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                console.log('Microphone accessed successfully');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    event.data.arrayBuffer().then(buffer => {
+                        const audioData = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+                        socket.emit('voice_data', {
+                            room_id: currentRoomId,
+                            username: currentUsername,
+                            audio_data: audioData
+                        });
+                    });
+                };
+                mediaRecorder.start(100); // Send audio chunks every 100ms
                 socket.emit('start_voice_chat', { room_id: currentRoomId, username: currentUsername });
-                setupPeerConnections();
             } catch (err) {
-                console.error('Error accessing microphone:', err);
-                messagesDiv.innerHTML += `<p style="color: red;">Error: Could not access microphone</p>`;
+                console.error('Error starting voice chat:', err);
+                messagesDiv.innerHTML += `<p class="text-red-500">Error: Could not start voice chat</p>`;
             }
         }
 
         function endVoiceChat() {
             if (!currentRoomId) return;
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-                console.log('Local stream stopped');
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                mediaRecorder = null;
             }
-            for (let sid in peerConnections) {
-                peerConnections[sid].close();
-                delete peerConnections[sid];
-                console.log(`Closed peer connection with ${sid}`);
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
             }
             socket.emit('end_voice_chat', { room_id: currentRoomId, username: currentUsername });
         }
@@ -244,143 +203,59 @@
         startVoiceBtn.addEventListener('click', startVoiceChat);
         endVoiceBtn.addEventListener('click', endVoiceChat);
 
-        function setupPeerConnections() {
-            fetch(`/api/rooms/${currentRoomId}/users`)
-                .then(response => response.json())
-                .then(data => {
-                    data.users.forEach(user => {
-                        if (user.username !== currentUsername && user.in_voice_chat) {
-                            console.log(`Setting up peer connection with ${user.username} (${user.socket_id})`);
-                            createPeerConnection(user.socket_id);
-                        }
-                    });
-                })
-                .catch(err => console.error('Error fetching users for voice chat:', err));
-        }
+        muteAllBtn.addEventListener('click', () => {
+            if (currentRoomId) socket.emit('mute_all', { room_id: currentRoomId });
+        });
 
-        function createPeerConnection(sid) {
-            if (peerConnections[sid]) return;
+        unmuteAllBtn.addEventListener('click', () => {
+            if (currentRoomId) socket.emit('unmute_all', { room_id: currentRoomId });
+        });
 
-            const pc = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-            });
-            peerConnections[sid] = pc;
-
-            localStream.getTracks().forEach(track => {
-                pc.addTrack(track, localStream);
-                console.log(`Added track to peer connection with ${sid}`);
-            });
-
-            pc.ontrack = (event) => {
-                console.log(`Received audio stream from ${sid}`);
-                const audio = new Audio();
-                audio.srcObject = event.streams[0];
-                audio.autoplay = true;
-                audio.volume = volumeInput.value / 100;
-                document.body.appendChild(audio); // Ensure audio element persists
-            };
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    console.log(`Sending ICE candidate to ${sid}`);
-                    socket.emit('voice_signal', {
-                        room_id: currentRoomId,
-                        username: currentUsername,
-                        signal: { type: 'candidate', candidate: event.candidate },
-                        to_sid: sid
-                    });
-                }
-            };
-
-            pc.onconnectionstatechange = () => {
-                console.log(`Peer connection state with ${sid}: ${pc.connectionState}`);
-            };
-
-            pc.createOffer()
-                .then(offer => {
-                    return pc.setLocalDescription(offer);
-                })
-                .then(() => {
-                    console.log(`Sending offer to ${sid}`);
-                    socket.emit('voice_signal', {
-                        room_id: currentRoomId,
-                        username: currentUsername,
-                        signal: { type: 'offer', sdp: pc.localDescription },
-                        to_sid: sid
-                    });
-                })
-                .catch(err => console.error(`Error creating offer for ${sid}:`, err));
-        }
-
-        socket.on('voice_signal', (data) => {
-            const { username, signal, from_sid } = data;
-            if (username === currentUsername) return;
-
-            let pc = peerConnections[from_sid];
-            if (!pc) {
-                console.log(`Creating new peer connection for ${username} (${from_sid})`);
-                pc = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
-                peerConnections[from_sid] = pc;
-
-                pc.ontrack = (event) => {
-                    console.log(`Received audio stream from ${from_sid}`);
-                    const audio = new Audio();
-                    audio.srcObject = event.streams[0];
-                    audio.autoplay = true;
-                    audio.volume = volumeInput.value / 100;
-                    document.body.appendChild(audio);
-                };
-
-                pc.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        console.log(`Sending ICE candidate back to ${from_sid}`);
-                        socket.emit('voice_signal', {
-                            room_id: currentRoomId,
-                            username: currentUsername,
-                            signal: { type: 'candidate', candidate: event.candidate },
-                            to_sid: from_sid
-                        });
-                    }
-                };
-
-                pc.onconnectionstatechange = () => {
-                    console.log(`Peer connection state with ${from_sid}: ${pc.connectionState}`);
-                };
-
-                if (localStream) {
-                    localStream.getTracks().forEach(track => {
-                        pc.addTrack(track, localStream);
-                        console.log(`Added local track to peer connection with ${from_sid}`);
-                    });
-                }
+        muteUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target && currentRoomId) {
+                socket.emit('host_mute_user', { room_id: currentRoomId, username: target, mute: true });
             }
+        });
 
-            if (signal.type === 'offer') {
-                console.log(`Received offer from ${from_sid}`);
-                pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
-                    .then(() => pc.createAnswer())
-                    .then(answer => pc.setLocalDescription(answer))
-                    .then(() => {
-                        console.log(`Sending answer to ${from_sid}`);
-                        socket.emit('voice_signal', {
-                            room_id: currentRoomId,
-                            username: currentUsername,
-                            signal: { type: 'answer', sdp: pc.localDescription },
-                            to_sid: from_sid
-                        });
-                    })
-                    .catch(err => console.error(`Error handling offer from ${from_sid}:`, err));
-            } else if (signal.type === 'answer') {
-                console.log(`Received answer from ${from_sid}`);
-                pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
-                    .catch(err => console.error(`Error setting remote description from ${from_sid}:`, err));
-            } else if (signal.type === 'candidate') {
-                console.log(`Received ICE candidate from ${from_sid}`);
-                pc.addIceCandidate(new RTCIceCandidate(signal.candidate))
-                    .catch(err => console.error(`Error adding ICE candidate from ${from_sid}:`, err));
+        kickUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target && currentRoomId) {
+                socket.emit('kick_user', { room_id: currentRoomId, username: target });
             }
+        });
+
+        banUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target && currentRoomId) {
+                socket.emit('ban_user', { room_id: currentRoomId, username: target });
+            }
+        });
+
+        promoteBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target && currentRoomId) {
+                socket.emit('promote_moderator', { room_id: currentRoomId, username: target });
+            }
+        });
+
+        adjustVolumeBtn.addEventListener('click', () => {
+            const volume = parseInt(volumeInput.value);
+            if (volume >= 0 && volume <= 100 && currentRoomId) {
+                socket.emit('adjust_volume', { room_id: currentRoomId, username: currentUsername, volume: volume });
+            }
+        });
+
+        endRoomBtn.addEventListener('click', () => {
+            if (currentRoomId) socket.emit('end_room', { room_id: currentRoomId });
+        });
+
+        messageInput.addEventListener('input', () => {
+            if (currentRoomId) socket.emit('user_typing', { room_id: currentRoomId, username: currentUsername });
+        });
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
         });
 
         socket.on('connect', () => {
@@ -388,121 +263,105 @@
         });
 
         socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-            messagesDiv.innerHTML += `<p style="color: orange;">Disconnected. Attempting to reconnect...</p>`;
+            messagesDiv.innerHTML += `<p class="text-yellow-500">Disconnected. Attempting to reconnect...</p>`;
         });
 
         socket.on('reconnect', () => {
-            console.log('Reconnected to server');
-            messagesDiv.innerHTML += `<p style="color: green;">Reconnected to server!</p>`;
+            messagesDiv.innerHTML += `<p class="text-green-500">Reconnected to server!</p>`;
             if (currentUsername && currentRoomId) {
                 socket.emit('join_room', { room_id: currentRoomId, username: currentUsername });
             }
         });
 
         socket.on('join_success', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message}</p>`;
+            messagesDiv.innerHTML += `<p class="message">${data.message}</p>`;
             currentRoomId = data.room_id;
-            mySocketId = data.socket_id;
-            console.log(`My socket ID: ${mySocketId}`);
             fetchUsers();
         });
 
         socket.on('user_joined', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} joined at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message">${data.username} joined at ${data.timestamp}</p>`;
             fetchUsers();
-            if (localStream && data.username !== currentUsername && data.socket_id) {
-                console.log(`${data.username} joined, initiating peer connection`);
-                createPeerConnection(data.socket_id);
-            }
         });
 
         socket.on('new_message', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} [${data.timestamp}]: ${data.message}</p>`;
+            messagesDiv.innerHTML += `<p class="message">${data.username} [${data.timestamp}]: ${data.message}</p>`;
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
         socket.on('private_message', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} to ${data.recipient} [${data.timestamp}]: ${data.message} (Private)</p>`;
+            messagesDiv.innerHTML += `<p class="message text-blue-600">${data.username} to ${data.recipient} [${data.timestamp}]: ${data.message} (Private)</p>`;
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         });
 
         socket.on('voice_chat_started', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-green-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
-            if (data.username !== currentUsername && localStream && data.socket_id) {
-                console.log(`${data.username} started voice chat, initiating peer connection`);
-                createPeerConnection(data.socket_id);
-            }
         });
 
         socket.on('voice_chat_ended', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-red-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
-            if (peerConnections[data.socket_id]) {
-                peerConnections[data.socket_id].close();
-                delete peerConnections[data.socket_id];
-                console.log(`Closed peer connection with ${data.socket_id}`);
+        });
+
+        socket.on('voice_data', (data) => {
+            if (data.username !== currentUsername) {
+                const audioData = atob(data.audio_data);
+                const audioArray = new Uint8Array(audioData.length);
+                for (let i = 0; i < audioData.length; i++) {
+                    audioArray[i] = audioData.charCodeAt(i);
+                }
+                const audioBlob = new Blob([audioArray], { type: 'audio/webm' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                audio.volume = volumeInput.value / 100;
+                audio.play();
             }
         });
 
         socket.on('user_left', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} left at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message">${data.username} left at ${data.timestamp}</p>`;
             fetchUsers();
-            if (peerConnections[data.socket_id]) {
-                peerConnections[data.socket_id].close();
-                delete peerConnections[data.socket_id];
-                console.log(`Closed peer connection with ${data.socket_id}`);
-            }
         });
 
         socket.on('all_muted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-yellow-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
             endVoiceChat();
         });
 
         socket.on('all_unmuted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-yellow-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
         });
 
         socket.on('user_muted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-yellow-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
             if (data.username === currentUsername && data.muted) endVoiceChat();
         });
 
         socket.on('user_kicked', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-red-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
         });
 
         socket.on('user_banned', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-red-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
         });
 
         socket.on('moderator_promoted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-purple-600">${data.message} at ${data.timestamp}</p>`;
             fetchUsers();
         });
 
         socket.on('volume_adjusted', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username}'s volume set to ${data.volume}</p>`;
-            if (data.username === currentUsername) {
-                for (let sid in peerConnections) {
-                    peerConnections[sid].getReceivers().forEach(receiver => {
-                        if (receiver.track.kind === 'audio') {
-                            receiver.audioElement.volume = data.volume / 100;
-                        }
-                    });
-                }
-            }
+            messagesDiv.innerHTML += `<p class="message">${data.username}'s volume set to ${data.volume}</p>`;
         });
 
         socket.on('room_ended', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-red-600">${data.message} at ${data.timestamp}</p>`;
             alert('Room has been ended by the host and all data has been deleted.');
             currentRoomId = '';
             usersDiv.innerHTML = '';
@@ -510,18 +369,20 @@
         });
 
         socket.on('user_typing', (data) => {
-            messagesDiv.innerHTML += `<p>${data.username} is typing...</p>`;
+            messagesDiv.innerHTML += `<p class="message text-gray-500">${data.username} is typing...</p>`;
             setTimeout(() => {
-                if (messagesDiv.lastElementChild) messagesDiv.lastElementChild.remove();
+                if (messagesDiv.lastElementChild && messagesDiv.lastElementChild.textContent.includes('is typing')) {
+                    messagesDiv.lastElementChild.remove();
+                }
             }, 2000);
         });
 
         socket.on('password_set', (data) => {
-            messagesDiv.innerHTML += `<p>${data.message}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-green-600">${data.message}</p>`;
         });
 
         socket.on('error', (data) => {
-            messagesDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
+            messagesDiv.innerHTML += `<p class="message text-red-500">Error: ${data.message}</p>`;
         });
 
         socket.on('force_disconnect', (data) => {
@@ -534,9 +395,9 @@
                 fetch(`/api/rooms/${currentRoomId}/users`)
                     .then(response => response.json())
                     .then(data => {
-                        usersDiv.innerHTML = '<h3>Users:</h3>';
+                        usersDiv.innerHTML = '<h3 class="text-lg font-semibold mb-2">Users:</h3>';
                         data.users.forEach(user => {
-                            usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''} ${user.in_voice_chat ? '(In Voice)' : ''}</p>`;
+                            usersDiv.innerHTML += `<p class="text-sm">${user.username} ${user.is_muted ? '<span class="text-red-500">(Muted)</span>' : ''} ${user.is_moderator ? '<span class="text-purple-500">(Moderator)</span>' : ''} ${user.in_voice_chat ? '<span class="text-green-500">(In Voice)</span>' : ''}</p>`;
                         });
                     })
                     .catch(err => console.error('Error fetching users:', err));

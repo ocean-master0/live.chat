@@ -13,6 +13,7 @@ from cryptography.fernet import Fernet
 import re
 from dotenv import load_dotenv
 import eventlet
+import base64
 
 eventlet.monkey_patch()
 
@@ -54,8 +55,6 @@ class Message(db.Model):
     encrypted = db.Column(db.Boolean, default=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     recipient = db.Column(db.String(20), nullable=True)
-    file_data = db.Column(db.Text, nullable=True)
-    file_type = db.Column(db.String(50), nullable=True)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -198,10 +197,7 @@ def handle_join_room(data):
                 'username': msg.username,
                 'message': content,
                 'timestamp': msg.timestamp.strftime('%H:%M:%S'),
-                'recipient': msg.recipient,
-                'file_data': msg.file_data,
-                'file_type': msg.file_type,
-                'reactions': [{'username': r.username, 'emoji': r.emoji} for r in Reaction.query.filter_by(message_id=msg.id).all()]
+                'recipient': msg.recipient
             })
         
         emit('join_success', {
@@ -260,9 +256,7 @@ def handle_message(data):
         msg_data = {
             'username': username,
             'message': message_content,
-            'timestamp': timestamp,
-            'message_id': new_message.id,
-            'reactions': []
+            'timestamp': timestamp
         }
         
         if recipient:
@@ -323,56 +317,47 @@ def handle_end_voice_chat(data):
         app.logger.error(f'Error in end_voice_chat: {str(e)}')
         emit('error', {'message': 'Server error'})
 
-@socketio.on('voice_signal')
-def handle_voice_signal(data):
+@socketio.on('voice_data')
+def handle_voice_data(data):
     try:
         room_id = data.get('room_id')
         username = data.get('username')
-        signal = data.get('signal')
-        to_sid = data.get('to_sid')
+        audio_data = data.get('audio_data')
         user = User.query.filter_by(room_id=room_id, username=username).first()
         if not user or not user.in_voice_chat or user.is_muted:
             return
-        if to_sid:
-            emit('voice_signal', {
-                'username': username,
-                'signal': signal,
-                'from_sid': request.sid
-            }, to=to_sid)
-        else:
-            emit('voice_signal', {
-                'username': username,
-                'signal': signal,
-                'from_sid': request.sid
-            }, room=room_id, skip_sid=request.sid)
+        emit('voice_data', {
+            'username': username,
+            'audio_data': audio_data
+        }, room=room_id, skip_sid=request.sid)
     except Exception as e:
-        app.logger.error(f'Error in voice_signal: {str(e)}')
+        app.logger.error(f'Error in voice_data: {str(e)}')
         emit('error', {'message': 'Server error'})
 
 @socketio.on('end_room')
 def handle_end_room(data):
     try:
-        room = db.session.get(Room, data.get('room_id'))
+        room_id = data.get('room_id')
+        room = Room.query.filter_by(id=room_id).first()
         if not room or room.host_sid != request.sid:
             emit('error', {'message': 'Only host can end room'})
             return
         
-        message_ids = [msg.id for msg in Message.query.filter_by(room_id=room.id).all()]
-        User.query.filter_by(room_id=room.id).delete()
-        Message.query.filter_by(room_id=room.id).delete()
-        Ban.query.filter_by(room_id=room.id).delete()
-        if message_ids:
-            Reaction.query.filter(Reaction.message_id.in_(message_ids)).delete(synchronize_session=False)
-        db.session.delete(room)
+        # Simplified deletion process
+        User.query.filter_by(room_id=room_id).delete()
+        Message.query.filter_by(room_id=room_id).delete()
+        Ban.query.filter_by(room_id=room_id).delete()
+        Reaction.query.filter_by(message_id=None).delete()  # Clear orphaned reactions
+        Room.query.filter_by(id=room_id).delete()
         db.session.commit()
         
         emit('room_ended', {
             'message': 'Room ended by host and all data deleted',
             'timestamp': datetime.now().strftime('%H:%M:%S')
-        }, room=room.id, broadcast=True)
+        }, room=room_id, broadcast=True)
     except Exception as e:
         app.logger.error(f'Error in end_room: {str(e)}')
-        emit('error', {'message': 'Server error'})
+        emit('error', {'message': f'Server error: {str(e)}'})
 
 @socketio.on('mute_all')
 def handle_mute_all(data):
@@ -527,13 +512,11 @@ def handle_disconnect():
             }, room=room_id, broadcast=True)
             room = db.session.get(Room, room_id)
             if room and room.host_sid == request.sid and User.query.filter_by(room_id=room_id).count() == 0:
-                message_ids = [msg.id for msg in Message.query.filter_by(room_id=room.id).all()]
-                User.query.filter_by(room_id=room.id).delete()
-                Message.query.filter_by(room_id=room.id).delete()
-                Ban.query.filter_by(room_id=room.id).delete()
-                if message_ids:
-                    Reaction.query.filter(Reaction.message_id.in_(message_ids)).delete(synchronize_session=False)
-                db.session.delete(room)
+                User.query.filter_by(room_id=room_id).delete()
+                Message.query.filter_by(room_id=room_id).delete()
+                Ban.query.filter_by(room_id=room_id).delete()
+                Reaction.query.filter_by(message_id=None).delete()
+                Room.query.filter_by(id=room_id).delete()
                 db.session.commit()
     except Exception as e:
         app.logger.error(f'Error in disconnect: {str(e)}')
