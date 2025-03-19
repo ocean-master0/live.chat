@@ -3,568 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Chat Lounge</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <title>Chat App</title>
     <style>
         body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
             color: #333;
         }
-        .container {
-            max-width: 1200px;
-            padding: 20px;
-        }
-        .chat-container {
-            height: 70vh;
-            overflow-y: auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-        .user-list {
-            height: 70vh;
-            overflow-y: auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        .message {
-            margin-bottom: 15px;
+        #messages {
+            border: 1px solid #ccc;
             padding: 15px;
-            border-radius: 10px;
-            background: #f8f9fa;
-            transition: all 0.3s ease;
-        }
-        .message:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-        .typing-indicator {
-            font-style: italic;
-            color: #fff;
-            background: rgba(0, 0, 0, 0.1);
-            padding: 5px 10px;
+            height: 300px;
+            overflow-y: scroll;
+            background-color: #fff;
             border-radius: 5px;
-            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
-        .card {
+        #messages p {
+            margin: 5px 0;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
             border: none;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .btn {
-            border-radius: 25px;
-            padding: 8px 20px;
-            transition: all 0.3s ease;
+        button:hover {
+            background-color: #0056b3;
         }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        #users {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 5px;
         }
-        .host-controls .btn {
-            margin-right: 10px;
+        #users h3 {
+            margin-top: 0;
+            color: #333;
         }
-        .chat-header {
-            background: #fff;
-            border-radius: 15px 15px 0 0;
-            padding: 15px;
-            margin-bottom: 10px;
+        #users p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="text-center text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.2);">Secure Chat Lounge</h1>
-        
-        <div id="join-form" class="row justify-content-center mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header bg-primary text-white text-center">
-                        Join Chat Room
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="room-id" class="form-label">Room ID</label>
-                            <input type="text" class="form-control" id="room-id" value="{{ room_id }}" placeholder="Enter room ID">
-                        </div>
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" placeholder="Enter username (1-20 chars)">
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Room Password (optional)</label>
-                            <input type="password" class="form-control" id="password" placeholder="Enter room password">
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <button id="join-btn" class="btn btn-primary">Join Room</button>
-                            <button id="create-btn" class="btn btn-success">Create New Room</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="chat-room" class="row" style="display:none;">
-            <div class="col-md-9">
-                <div class="chat-header d-flex justify-content-between align-items-center">
-                    <h4 class="m-0">Room: <span id="current-room"></span></h4>
-                    <button id="leave-btn" class="btn btn-danger">Leave Room</button>
-                </div>
-                <div id="chat-container" class="chat-container"></div>
-                <div id="typing-indicator" class="typing-indicator"></div>
-                <form id="message-form" class="mb-3">
-                    <div class="input-group">
-                        <input type="text" id="message-input" class="form-control" placeholder="Type your message...">
-                        <button type="submit" class="btn btn-primary">Send</button>
-                    </div>
-                </form>
-                
-                <div class="voice-controls mb-3">
-                    <h5 class="text-white">Voice Chat</h5>
-                    <div class="btn-group" role="group">
-                        <button id="start-voice" class="btn btn-success">Start Voice</button>
-                        <button id="stop-voice" class="btn btn-danger" disabled>Stop Voice</button>
-                        <button id="mute-btn" class="btn btn-warning">Mute</button>
-                    </div>
-                    <div class="mt-2">
-                        <label for="volume-control" class="form-label text-white">Volume: <span id="volume-value">100%</span></label>
-                        <input type="range" class="form-range" id="volume-control" min="0" max="100" value="100">
-                    </div>
-                </div>
+    <h1>Chat Room: {{ room_id }}</h1>
+    <input type="text" id="username" placeholder="Enter your username">
+    <input type="text" id="password" placeholder="Room password (optional)">
+    <button id="joinBtn">Join Room</button>
+    <div id="messages"></div>
+    <input type="text" id="message" placeholder="Type a message">
+    <button id="sendBtn">Send Message</button>
+    <input type="text" id="recipient" placeholder="Recipient (optional)">
+    <button id="muteAllBtn">Mute All</button>
+    <button id="unmuteAllBtn">Unmute All</button>
+    <input type="text" id="targetUser" placeholder="Target username">
+    <button id="muteUserBtn">Mute User</button>
+    <button id="kickUserBtn">Kick User</button>
+    <button id="banUserBtn">Ban User</button>
+    <button id="promoteBtn">Promote to Moderator</button>
+    <input type="number" id="volume" min="0" max="100" value="100">
+    <button id="adjustVolumeBtn">Adjust Volume</button>
+    <button id="endRoomBtn">End Room</button>
+    <div id="users"></div>
 
-                <div id="host-controls" class="host-controls" style="display:none;">
-                    <h5 class="text-white">Host Controls</h5>
-                    <button id="end-room-btn" class="btn btn-danger">End Room</button>
-                    <button id="mute-all-btn" class="btn btn-warning">Mute All</button>
-                    <button id="unmute-all-btn" class="btn btn-info">Unmute All</button>
-                </div>
-            </div>
-            
-            <div class="col-md-3">
-                <div class="card">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <span>Users</span>
-                        <span class="badge bg-light text-dark" id="user-count">0</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <ul id="user-list" class="list-group list-group-flush user-list"></ul>
-                    </div>
-                </div>
-                
-                <div class="card mt-3">
-                    <div class="card-header bg-primary text-white">Room Settings</div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label for="set-password" class="form-label">Set Room Password</label>
-                            <input type="password" class="form-control" id="set-password">
-                        </div>
-                        <button id="save-password" class="btn btn-primary">Save Password</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const socket = io();
-            let currentUsername = '';
-            let currentRoom = '';
-            let typingTimeout = null;
-            let voiceStream = null;
-            let isMuted = false;
-            let isHost = false;
-            
-            const joinForm = document.getElementById('join-form');
-            const chatRoom = document.getElementById('chat-room');
-            const roomIdInput = document.getElementById('room-id');
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
-            const joinBtn = document.getElementById('join-btn');
-            const createBtn = document.getElementById('create-btn');
-            const leaveBtn = document.getElementById('leave-btn');
-            const currentRoomSpan = document.getElementById('current-room');
-            const chatContainer = document.getElementById('chat-container');
-            const messageForm = document.getElementById('message-form');
-            const messageInput = document.getElementById('message-input');
-            const userList = document.getElementById('user-list');
-            const userCount = document.getElementById('user-count');
-            const typingIndicator = document.getElementById('typing-indicator');
-            const setPasswordInput = document.getElementById('set-password');
-            const savePasswordBtn = document.getElementById('save-password');
-            const startVoiceBtn = document.getElementById('start-voice');
-            const stopVoiceBtn = document.getElementById('stop-voice');
-            const muteBtn = document.getElementById('mute-btn');
-            const volumeControl = document.getElementById('volume-control');
-            const volumeValue = document.getElementById('volume-value');
-            const hostControls = document.getElementById('host-controls');
-            const endRoomBtn = document.getElementById('end-room-btn');
-            const muteAllBtn = document.getElementById('mute-all-btn');
-            const unmuteAllBtn = document.getElementById('unmute-all-btn');
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('room')) {
-                roomIdInput.value = urlParams.get('room');
-            }
-            
-            createBtn.addEventListener('click', () => {
-                fetch('/api/rooms/new', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        roomIdInput.value = data.room_id;
-                    })
-                    .catch(error => console.error('Error creating room:', error));
-            });
-            
-            joinBtn.addEventListener('click', () => {
-                const roomId = roomIdInput.value.trim();
-                const username = usernameInput.value.trim();
-                const password = passwordInput.value;
-                
-                if (!roomId || !username) {
-                    alert('Room ID and username are required');
-                    return;
-                }
-                
+        const socket = io.connect(window.location.origin);
+        const roomId = "{{ room_id }}";
+        const messagesDiv = document.getElementById('messages');
+        const usersDiv = document.getElementById('users');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messageInput = document.getElementById('message');
+        const recipientInput = document.getElementById('recipient');
+        const targetUserInput = document.getElementById('targetUser');
+        const volumeInput = document.getElementById('volume');
+        const joinBtn = document.getElementById('joinBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const muteAllBtn = document.getElementById('muteAllBtn');
+        const unmuteAllBtn = document.getElementById('unmuteAllBtn');
+        const muteUserBtn = document.getElementById('muteUserBtn');
+        const kickUserBtn = document.getElementById('kickUserBtn');
+        const banUserBtn = document.getElementById('banUserBtn');
+        const promoteBtn = document.getElementById('promoteBtn');
+        const adjustVolumeBtn = document.getElementById('adjustVolumeBtn');
+        const endRoomBtn = document.getElementById('endRoomBtn');
+
+        let currentUsername = '';
+
+        joinBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            if (username) {
                 currentUsername = username;
-                currentRoom = roomId;
-                
-                socket.emit('join_room', {
-                    room_id: roomId,
-                    username: username,
-                    password: password
-                });
-            });
-            
-            leaveBtn.addEventListener('click', () => {
-                socket.disconnect();
-                joinForm.style.display = 'block';
-                chatRoom.style.display = 'none';
-                stopVoice();
-                window.location.reload();
-            });
-            
-            messageForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const message = messageInput.value.trim();
-                if (!message) return;
-                
-                socket.emit('send_message', {
-                    room_id: currentRoom,
-                    username: currentUsername,
-                    message: message
-                });
-                
-                messageInput.value = '';
-            });
-            
-            messageInput.addEventListener('input', () => {
-                if (typingTimeout) clearTimeout(typingTimeout);
-                
-                socket.emit('user_typing', {
-                    room_id: currentRoom,
-                    username: currentUsername
-                });
-                
-                typingTimeout = setTimeout(() => {
-                    typingTimeout = null;
-                }, 1000);
-            });
-            
-            savePasswordBtn.addEventListener('click', () => {
-                const password = setPasswordInput.value;
-                
-                socket.emit('set_password', {
-                    room_id: currentRoom,
-                    password: password
-                });
-                
-                setPasswordInput.value = '';
-            });
-            
-            startVoiceBtn.addEventListener('click', () => {
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => {
-                        voiceStream = stream;
-                        startVoiceBtn.disabled = true;
-                        stopVoiceBtn.disabled = false;
-                        
-                        const audioContext = new AudioContext();
-                        const microphone = audioContext.createMediaStreamSource(stream);
-                        const processor = audioContext.createScriptProcessor(1024, 1, 1);
-                        
-                        microphone.connect(processor);
-                        processor.connect(audioContext.destination);
-                        
-                        processor.onaudioprocess = (e) => {
-                            if (isMuted) return;
-                            
-                            const inputData = e.inputBuffer.getChannelData(0);
-                            const output = new Float32Array(inputData);
-                            const blob = new Blob([output], { type: 'audio/wav' });
-                            const reader = new FileReader();
-                            
-                            reader.onloadend = () => {
-                                socket.emit('voice_signal', {
-                                    room_id: currentRoom,
-                                    username: currentUsername,
-                                    signal: reader.result
-                                });
-                            };
-                            
-                            reader.readAsDataURL(blob);
-                        };
-                    })
-                    .catch(error => {
-                        console.error('Error accessing microphone:', error);
-                        alert('Could not access microphone');
-                    });
-            });
-            
-            stopVoiceBtn.addEventListener('click', stopVoice);
-            
-            function stopVoice() {
-                if (voiceStream) {
-                    voiceStream.getTracks().forEach(track => track.stop());
-                    voiceStream = null;
-                    startVoiceBtn.disabled = false;
-                    stopVoiceBtn.disabled = true;
-                }
-            }
-            
-            muteBtn.addEventListener('click', () => {
-                isMuted = !isMuted;
-                muteBtn.textContent = isMuted ? 'Unmute' : 'Mute';
-                muteBtn.classList.toggle('btn-warning');
-                muteBtn.classList.toggle('btn-info');
-                
-                socket.emit('mute_user', {
-                    room_id: currentRoom,
-                    username: currentUsername,
-                    mute: isMuted
-                });
-            });
-            
-            volumeControl.addEventListener('input', () => {
-                const volume = volumeControl.value;
-                volumeValue.textContent = `${volume}%`;
-                
-                socket.emit('adjust_volume', {
-                    room_id: currentRoom,
-                    username: currentUsername,
-                    volume: parseInt(volume)
-                });
-            });
-
-            endRoomBtn.addEventListener('click', () => {
-                if (confirm('Are you sure you want to end the room? All data will be permanently deleted.')) {
-                    socket.emit('end_room', { room_id: currentRoom });
-                }
-            });
-
-            muteAllBtn.addEventListener('click', () => {
-                socket.emit('mute_all', { room_id: currentRoom });
-            });
-
-            unmuteAllBtn.addEventListener('click', () => {
-                socket.emit('unmute_all', { room_id: currentRoom });
-            });
-
-            socket.on('connect', () => {
-                console.log('Connected to server');
-            });
-            
-            socket.on('error', (data) => {
-                alert(data.message);
-            });
-            
-            socket.on('join_success', (data) => {
-                joinForm.style.display = 'none';
-                chatRoom.style.display = 'flex';
-                currentRoomSpan.textContent = currentRoom;
-                isHost = data.is_host;
-                hostControls.style.display = isHost ? 'block' : 'none';
-                
-                addMessage({
-                    username: 'System',
-                    message: data.message,
-                    timestamp: new Date().toLocaleTimeString()
-                });
-                
-                window.history.pushState({}, '', `?room=${currentRoom}`);
-            });
-            
-            socket.on('user_joined', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: `${data.username} has joined the room`,
-                    timestamp: data.timestamp
-                });
-                updateUserList();
-                userCount.textContent = data.user_count;
-            });
-            
-            socket.on('user_left', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: `${data.username} has left the room`,
-                    timestamp: data.timestamp
-                });
-                updateUserList();
-                userCount.textContent = data.user_count;
-            });
-            
-            socket.on('new_message', (data) => {
-                addMessage(data);
-                typingIndicator.textContent = '';
-            });
-            
-            socket.on('user_typing', (data) => {
-                typingIndicator.textContent = `${data.username} is typing...`;
-                setTimeout(() => {
-                    typingIndicator.textContent = '';
-                }, 2000);
-            });
-            
-            socket.on('password_set', (data) => {
-                alert(data.message);
-            });
-            
-            socket.on('user_muted', (data) => {
-                const status = data.muted ? 'muted' : 'unmuted';
-                addMessage({
-                    username: 'System',
-                    message: data.message || `${data.username} is now ${status}`,
-                    timestamp: new Date().toLocaleTimeString()
-                });
-                updateUserList();
-            });
-            
-            socket.on('volume_adjusted', (data) => {});
-            
-            socket.on('voice_signal', (data) => {
-                if (data.username !== currentUsername) {
-                    const audio = new Audio(data.signal);
-                    audio.play().catch(e => console.error('Error playing audio:', e));
-                }
-            });
-
-            socket.on('room_ended', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: data.message,
-                    timestamp: data.timestamp
-                });
-                setTimeout(() => {
-                    socket.disconnect();
-                    window.location.reload();
-                }, 1000);
-            });
-
-            socket.on('all_muted', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: data.message,
-                    timestamp: data.timestamp
-                });
-                updateUserList();
-            });
-
-            socket.on('all_unmuted', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: data.message,
-                    timestamp: data.timestamp
-                });
-                updateUserList();
-            });
-
-            socket.on('user_kicked', (data) => {
-                addMessage({
-                    username: 'System',
-                    message: `${data.username} has been kicked from the room`,
-                    timestamp: data.timestamp
-                });
-                updateUserList();
-                userCount.textContent = data.user_count;
-            });
-
-            socket.on('force_disconnect', (data) => {
-                alert(data.message);
-                socket.disconnect();
-                window.location.reload();
-            });
-
-            function addMessage(data) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message';
-                messageDiv.innerHTML = `
-                    <strong>${data.username}</strong> <small>${data.timestamp}</small>
-                    <p>${data.message}</p>
-                `;
-                chatContainer.appendChild(messageDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-            
-            function updateUserList() {
-                fetch(`/api/rooms/${currentRoom}/users`)
-                    .then(response => response.json())
-                    .then(data => {
-                        userList.innerHTML = '';
-                        data.users.forEach(user => {
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                            li.innerHTML = `
-                                ${user.username}
-                                ${user.is_muted ? '<span class="badge bg-warning">Muted</span>' : ''}
-                                ${isHost && user.username !== currentUsername ? `
-                                    <div>
-                                        <button class="btn btn-warning btn-sm mute-btn" data-username="${user.username}">
-                                            ${user.is_muted ? 'Unmute' : 'Mute'}
-                                        </button>
-                                        <button class="btn btn-danger btn-sm kick-btn" data-username="${user.username}">Kick</button>
-                                    </div>
-                                ` : ''}
-                            `;
-                            userList.appendChild(li);
-                        });
-
-                        document.querySelectorAll('.kick-btn').forEach(btn => {
-                            btn.addEventListener('click', () => {
-                                const username = btn.getAttribute('data-username');
-                                if (confirm(`Are you sure you want to kick ${username}?`)) {
-                                    socket.emit('kick_user', {
-                                        room_id: currentRoom,
-                                        username: username
-                                    });
-                                }
-                            });
-                        });
-
-                        document.querySelectorAll('.mute-btn').forEach(btn => {
-                            btn.addEventListener('click', () => {
-                                const username = btn.getAttribute('data-username');
-                                const muteStatus = btn.textContent.trim() === 'Mute';
-                                socket.emit('host_mute_user', {
-                                    room_id: currentRoom,
-                                    username: username,
-                                    mute: muteStatus
-                                });
-                            });
-                        });
-                    })
-                    .catch(error => console.error('Error fetching user list:', error));
+                socket.emit('join_room', { room_id: roomId, username: username, password: password });
             }
         });
+
+        sendBtn.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            const recipient = recipientInput.value.trim();
+            if (message) {
+                socket.emit('send_message', { 
+                    room_id: roomId, 
+                    username: currentUsername, 
+                    message: message, 
+                    recipient: recipient || null 
+                });
+                messageInput.value = '';
+            }
+        });
+
+        muteAllBtn.addEventListener('click', () => {
+            socket.emit('mute_all', { room_id: roomId });
+        });
+
+        unmuteAllBtn.addEventListener('click', () => {
+            socket.emit('unmute_all', { room_id: roomId });
+        });
+
+        muteUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target) {
+                socket.emit('host_mute_user', { room_id: roomId, username: target, mute: true });
+            }
+        });
+
+        kickUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target) {
+                socket.emit('kick_user', { room_id: roomId, username: target });
+            }
+        });
+
+        banUserBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target) {
+                socket.emit('ban_user', { room_id: roomId, username: target });
+            }
+        });
+
+        promoteBtn.addEventListener('click', () => {
+            const target = targetUserInput.value.trim();
+            if (target) {
+                socket.emit('promote_moderator', { room_id: roomId, username: target });
+            }
+        });
+
+        adjustVolumeBtn.addEventListener('click', () => {
+            const volume = parseInt(volumeInput.value);
+            if (volume >= 0 && volume <= 100) {
+                socket.emit('adjust_volume', { room_id: roomId, username: currentUsername, volume: volume });
+            }
+        });
+
+        endRoomBtn.addEventListener('click', () => {
+            socket.emit('end_room', { room_id: roomId });
+        });
+
+        messageInput.addEventListener('input', () => {
+            socket.emit('user_typing', { room_id: roomId, username: currentUsername });
+        });
+
+        socket.on('join_success', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('user_joined', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} joined at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('new_message', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} [${data.timestamp}]: ${data.message}</p>`;
+        });
+
+        socket.on('private_message', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} to ${data.recipient} [${data.timestamp}]: ${data.message} (Private)</p>`;
+        });
+
+        socket.on('user_left', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} left at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('all_muted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('all_unmuted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('user_muted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('user_kicked', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('user_banned', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('moderator_promoted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            fetchUsers();
+        });
+
+        socket.on('volume_adjusted', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username}'s volume set to ${data.volume}</p>`;
+        });
+
+        socket.on('room_ended', (data) => {
+            messagesDiv.innerHTML += `<p>${data.message} at ${data.timestamp}</p>`;
+            alert('Room has been ended by the host.');
+        });
+
+        socket.on('user_typing', (data) => {
+            messagesDiv.innerHTML += `<p>${data.username} is typing...</p>`;
+            setTimeout(() => {
+                messagesDiv.lastElementChild.remove();
+            }, 2000);
+        });
+
+        socket.on('error', (data) => {
+            messagesDiv.innerHTML += `<p style="color: red;">Error: ${data.message}</p>`;
+        });
+
+        socket.on('force_disconnect', (data) => {
+            alert(data.message);
+            window.location.reload();
+        });
+
+        function fetchUsers() {
+            fetch(`/api/rooms/${roomId}/users`)
+                .then(response => response.json())
+                .then(data => {
+                    usersDiv.innerHTML = '<h3>Users:</h3>';
+                    data.users.forEach(user => {
+                        usersDiv.innerHTML += `<p>${user.username} ${user.is_muted ? '(Muted)' : ''} ${user.is_moderator ? '(Moderator)' : ''}</p>`;
+                    });
+                });
+        }
     </script>
 </body>
 </html>
